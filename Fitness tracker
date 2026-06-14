@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src 'none'; connect-src 'none'; font-src 'none';">
+<title>💪 Vicky's Fitness Tracker</title>
+<style>
+:root {
+  --bg:#0f1117; --surface:#181c27; --card:#1e2335; --border:#2a3050;
+  --text:#e8eaf0; --muted:#7a84a0; --dim:#4a5280;
+  --green:#4ade80; --blue:#60a5fa; --orange:#f97316;
+  --purple:#c084fc; --yellow:#facc15; --red:#f87171;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,'Segoe UI',sans-serif;font-size:15px;}
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:var(--surface);}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+
+/* LAYOUT */
+#app{display:flex;flex-direction:column;height:100vh;}
+#header{background:linear-gradient(135deg,#0f1117,#1a1f35);border-bottom:1px solid var(--border);padding:16px 16px 0;flex-shrink:0;}
+#header h1{font-size:1.15rem;font-weight:800;letter-spacing:-0.02em;margin-bottom:6px;}
+#header h1 span{color:var(--green);}
+.day-badge{display:inline-flex;align-items:center;gap:6px;font-size:0.72rem;font-weight:700;padding:4px 10px;border-radius:20px;background:rgba(255,255,255,0.05);border:1px solid var(--border);margin-bottom:10px;}
+.tabs{display:flex;gap:3px;overflow-x:auto;scrollbar-width:none;padding-bottom:1px;}
+.tabs::-webkit-scrollbar{display:none;}
+.tab-btn{flex-shrink:0;padding:8px 13px;border-radius:8px 8px 0 0;border:1px solid transparent;border-bottom:none;background:transparent;color:var(--muted);cursor:pointer;font-size:0.75rem;font-weight:700;font-family:inherit;transition:all 0.15s;white-space:nowrap;}
+.tab-btn.active{background:var(--card);color:var(--green);border-color:var(--border);}
+.tab-btn:hover:not(.active){color:var(--text);background:rgba(255,255,255,0.04);}
+
+#content{flex:1;overflow-y:auto;padding:14px;}
+.panel{max-width:640px;margin:0 auto;display:none;}
+.panel.active{display:block;}
+
+/* CARDS */
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:15px;margin-bottom:12px;}
+.card.highlight{border-color:rgba(74,222,128,0.3);background:linear-gradient(135deg,#1a1f35,#1e2540);}
+.section-label{font-size:0.62rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--dim);font-weight:700;margin-bottom:10px;}
+
+/* CHECK ITEMS */
+.check-item{display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:10px;cursor:pointer;margin-bottom:5px;border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.02);transition:all 0.15s;user-select:none;}
+.check-item:hover{background:rgba(255,255,255,0.04);}
+.check-item.done{background:rgba(74,222,128,0.05);border-color:rgba(74,222,128,0.2);}
+.check-item.done .ci-label{text-decoration:line-through;color:var(--muted);}
+.check-box{width:22px;height:22px;border-radius:6px;border:2px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all 0.15s;background:transparent;}
+.check-item.done .check-box{background:var(--green);border-color:var(--green);}
+.check-box svg{display:none;}
+.check-item.done .check-box svg{display:block;}
+.ci-label{font-size:0.83rem;font-weight:600;color:var(--text);}
+.ci-sub{font-size:0.7rem;color:var(--dim);margin-top:2px;}
+
+/* ACCENT COLORS FOR CHECKS */
+.check-item.acc-orange.done{background:rgba(249,115,22,0.06);border-color:rgba(249,115,22,0.25);}
+.check-item.acc-orange.done .check-box{background:var(--orange);border-color:var(--orange);}
+.check-item.acc-purple.done{background:rgba(192,132,252,0.06);border-color:rgba(192,132,252,0.25);}
+.check-item.acc-purple.done .check-box{background:var(--purple);border-color:var(--purple);}
+
+/* PROGRESS RINGS */
+.rings-row{display:flex;justify-content:space-around;align-items:center;padding:12px 0;}
+.ring-wrap{display:flex;flex-direction:column;align-items:center;gap:5px;}
+.ring-label{font-size:0.6rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);font-weight:700;}
+
+/* WATER */
+.water-grid{display:flex;flex-wrap:wrap;gap:7px;margin-top:4px;}
+.water-btn{width:36px;height:36px;border-radius:8px;border:2px solid var(--border);background:rgba(255,255,255,0.02);font-size:1rem;cursor:pointer;transition:all 0.15s;display:flex;align-items:center;justify-content:center;}
+.water-btn.filled{border-color:var(--blue);background:rgba(96,165,250,0.18);}
+.water-hint{font-size:0.7rem;color:var(--dim);margin-top:8px;}
+
+/* NOTES */
+.notes-area{width:100%;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:inherit;font-size:0.82rem;padding:11px;resize:vertical;min-height:85px;outline:none;transition:border-color 0.2s;}
+.notes-area:focus{border-color:rgba(74,222,128,0.4);}
+
+/* CALENDAR */
+.cal-nav{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
+.cal-nav-btn{background:rgba(255,255,255,0.05);border:1px solid var(--border);color:var(--text);padding:6px 13px;border-radius:8px;cursor:pointer;font-family:inherit;font-size:0.78rem;transition:background 0.15s;}
+.cal-nav-btn:hover{background:rgba(255,255,255,0.1);}
+.cal-nav-title{font-weight:700;font-size:0.85rem;}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;}
+.cal-day-name{text-align:center;font-size:0.6rem;font-weight:700;color:var(--dim);padding-bottom:5px;}
+.cal-cell{text-align:center;padding:8px 3px;border-radius:10px;border:1px solid var(--border);background:rgba(255,255,255,0.02);}
+.cal-cell.today{border-color:rgba(74,222,128,0.4);background:rgba(74,222,128,0.06);}
+.cal-date{font-size:0.72rem;font-weight:700;color:var(--text);}
+.cal-cell.today .cal-date{color:var(--green);}
+.cal-emoji{font-size:0.6rem;margin:3px 0;}
+.cal-donut{width:28px;height:28px;margin:0 auto;position:relative;}
+.cal-legend{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin-top:12px;}
+.cal-legend-item{display:flex;align-items:center;gap:5px;font-size:0.65rem;color:var(--muted);}
+.cal-legend-dot{width:9px;height:9px;border-radius:50%;}
+
+/* WEEK SUMMARY */
+.week-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04);}
+.week-row:last-child{border-bottom:none;}
+.week-icon{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0;}
+.week-bar-wrap{flex:1;}
+.week-bar-label{font-size:0.78rem;font-weight:700;margin-bottom:5px;}
+.week-bar-track{height:5px;background:var(--surface);border-radius:3px;overflow:hidden;}
+.week-bar-fill{height:100%;border-radius:3px;transition:width 0.4s;}
+.week-pct{font-size:0.78rem;font-weight:700;min-width:34px;text-align:right;font-variant-numeric:tabular-nums;}
+
+/* EXERCISES TAB */
+.ex-type-header{font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;padding:8px 0 6px;margin-top:4px;}
+.ex-row{display:flex;align-items:center;gap:11px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,0.04);}
+.ex-row:last-child{border-bottom:none;}
+.ex-num{width:26px;height:26px;border-radius:6px;background:rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:center;font-size:0.7rem;font-weight:800;color:var(--muted);flex-shrink:0;}
+.ex-name{font-size:0.83rem;font-weight:700;}
+.ex-detail{font-size:0.7rem;color:var(--dim);margin-top:2px;}
+.rule-row{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:0.78rem;}
+.rule-row:last-child{border-bottom:none;}
+.rule-cond{flex:1;color:var(--text);}
+.rule-action{color:var(--muted);text-align:right;}
+
+/* DIET TAB */
+.diet-day-card{margin-bottom:10px;}
+.diet-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px;}
+.diet-day-title{font-weight:700;font-size:0.88rem;}
+.diet-macros{display:flex;gap:8px;}
+.diet-macro{font-size:0.68rem;font-variant-numeric:tabular-nums;}
+.meal-row{display:flex;gap:9px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.03);font-size:0.76rem;align-items:baseline;}
+.meal-row:last-child{border-bottom:none;}
+.meal-time{color:var(--dim);min-width:56px;font-size:0.67rem;flex-shrink:0;}
+.meal-name{flex:1;color:var(--text);}
+.meal-p{color:var(--muted);font-size:0.67rem;min-width:38px;text-align:right;flex-shrink:0;}
+
+/* SUPPS TAB */
+.supp-card{margin-bottom:11px;border-left-width:3px!important;border-left-style:solid!important;}
+.supp-header{display:flex;align-items:center;gap:11px;margin-bottom:11px;}
+.supp-icon{font-size:1.7rem;}
+.supp-name{font-weight:800;font-size:0.93rem;}
+.supp-brand{font-size:0.7rem;color:var(--muted);margin-top:2px;}
+.supp-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:11px;}
+.supp-detail-item{background:var(--surface);border-radius:8px;padding:8px 10px;}
+.supp-detail-lbl{font-size:0.6rem;color:var(--dim);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px;}
+.supp-detail-val{font-size:0.78rem;font-weight:600;color:var(--text);}
+.supp-two-col{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:10px;}
+.supp-col-title{font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:6px;}
+.supp-col-item{font-size:0.73rem;color:var(--muted);margin-bottom:4px;line-height:1.4;}
+.supp-schedule-row{display:flex;gap:9px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04);flex-wrap:wrap;}
+.supp-schedule-row:last-child{border-bottom:none;}
+.supp-time{font-size:0.7rem;color:var(--purple);min-width:56px;flex-shrink:0;font-weight:700;}
+.supp-what{font-size:0.8rem;font-weight:700;}
+.supp-when{font-size:0.68rem;color:var(--dim);margin-top:2px;}
+
+/* PROGRESS TAB */
+.big-number{font-size:2.4rem;font-weight:800;color:var(--green);font-variant-numeric:tabular-nums;line-height:1;}
+.bar-chart-row{display:flex;justify-content:center;gap:5px;margin-top:14px;flex-wrap:wrap;}
+.bar-col{text-align:center;}
+.bar-day{font-size:0.6rem;color:var(--dim);margin-bottom:4px;}
+.bar-track{width:30px;height:58px;background:var(--surface);border-radius:4px;position:relative;overflow:hidden;margin:0 auto;}
+.bar-fill{position:absolute;bottom:0;left:0;right:0;border-radius:4px;transition:height 0.5s;}
+.bar-pct{font-size:0.58rem;color:var(--muted);margin-top:3px;}
+.goal-row{display:flex;gap:9px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:0.8rem;align-items:flex-start;}
+.goal-row:last-child{border-bottom:none;}
+.goal-text{font-weight:600;color:var(--text);}
+.goal-note{font-size:0.7rem;color:var(--dim);margin-top:2px;}
+.note-entry{padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04);}
+.note-entry:last-child{border-bottom:none;}
+.note-entry-day{font-size:0.68rem;color:var(--dim);font-weight:700;margin-bottom:4px;}
+.note-entry-text{font-size:0.8rem;color:var(--text);}
+.empty-note{font-size:0.78rem;color:var(--dim);text-align:center;padding:12px;}
+
+/* REST DAY */
+.rest-card{text-align:center;padding:28px 16px;}
+.rest-emoji{font-size:2.2rem;margin-bottom:8px;}
+.rest-title{font-weight:700;font-size:1rem;}
+.rest-sub{font-size:0.78rem;color:var(--muted);margin-top:4px;}
+
+/* UTILITY */
+.mt4{margin-top:4px;} .mt8{margin-top:8px;} .mt12{margin-top:12px;} .mt14{margin-top:14px;}
+.flex{display:flex;} .flex-col{flex-direction:column;} .items-center{align-items:center;}
+.gap8{gap:8px;} .flex1{flex:1;} .fw700{font-weight:700;}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="header">
+    <h1>💪 <span>Vicky's</span> Fitness Tracker</h1>
+    <div class="day-badge" id="dayBadge">Loading...</div>
+    <div class="tabs" id="tabs">
+      <button class="tab-btn active" onclick="switchTab('today')">Today</button>
+      <button class="tab-btn" onclick="switchTab('calendar')">Calendar</button>
+      <button class="tab-btn" onclick="switchTab('exercises')">Exercises</button>
+      <button class="tab-btn" onclick="switchTab('diet')">Diet</button>
+      <button class="tab-btn" onclick="switchTab('supplements')">Supplements</button>
+      <button class="tab-btn" onclick="switchTab('progress')">Progress</button>
+    </div>
+  </div>
+  <div id="content">
+    <div class="panel active" id="panel-today"></div>
+    <div class="panel" id="panel-calendar"></div>
+    <div class="panel" id="panel-exercises"></div>
+    <div class="panel" id="panel-diet"></div>
+    <div class="panel" id="panel-supplements"></div>
+    <div class="panel" id="panel-progress"></div>
+  </div>
+</div>
+
+<script>
+// ── SECURITY: safe text helper (no innerHTML with user data) ──────────────────
+function esc(str) {
+  return String(str)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function setHTML(el, html) { el.innerHTML = html; }
+function setText(el, txt) { el.textContent = txt; }
+
+// ── DATA ─────────────────────────────────────────────────────────────────────
+const WORKOUTS = {
+  Mon:{label:'Push',color:'#f97316',emoji:'🔴'},
+  Tue:{label:'Pull',color:'#60a5fa',emoji:'🔵'},
+  Wed:{label:'Legs',color:'#4ade80',emoji:'🟢'},
+  Thu:{label:'Push',color:'#f97316',emoji:'🔴'},
+  Fri:{label:'Pull',color:'#60a5fa',emoji:'🔵'},
+  Sat:{label:'Legs',color:'#4ade80',emoji:'🟢'},
+  Sun:{label:'Rest',color:'#7a84a0',emoji:'😴'}
+};
+const EXERCISES = {
+  Push:[
+    {id:'p1',name:'Dumbbell Chest Press',sets:'3×10',muscle:'Chest'},
+    {id:'p2',name:'Incline Dumbbell Press',sets:'3×10',muscle:'Upper Chest'},
+    {id:'p3',name:'Lateral Raises',sets:'3×12',muscle:'Shoulders'},
+    {id:'p4',name:'Overhead Dumbbell Press',sets:'3×10',muscle:'Shoulders'},
+    {id:'p5',name:'Tricep Pushdown',sets:'3×12',muscle:'Triceps'},
+    {id:'p6',name:'Diamond Push-ups',sets:'2×10',muscle:'Triceps'}
+  ],
+  Pull:[
+    {id:'pu1',name:'Lat Pulldown',sets:'3×10',muscle:'Back'},
+    {id:'pu2',name:'Seated Cable Row',sets:'3×10',muscle:'Mid Back'},
+    {id:'pu3',name:'Single Arm Row',sets:'3×10',muscle:'Lats'},
+    {id:'pu4',name:'Face Pulls',sets:'3×15',muscle:'Rear Delt'},
+    {id:'pu5',name:'Bicep Curl',sets:'3×12',muscle:'Biceps'},
+    {id:'pu6',name:'Hammer Curl',sets:'2×12',muscle:'Biceps'}
+  ],
+  Legs:[
+    {id:'l1',name:'Goblet Squat',sets:'3×10',muscle:'Quads'},
+    {id:'l2',name:'Leg Press',sets:'3×12',muscle:'Quads'},
+    {id:'l3',name:'Romanian Deadlift',sets:'3×10',muscle:'Hamstrings'},
+    {id:'l4',name:'Leg Curl',sets:'3×12',muscle:'Hamstrings'},
+    {id:'l5',name:'Leg Extension',sets:'3×12',muscle:'Quads'},
+    {id:'l6',name:'Calf Raises',sets:'3×15',muscle:'Calves'}
+  ],
+  Rest:[]
+};
+const MEALS = {
+  Mon:[
+    {id:'m1',time:'7:00 AM',name:'Egg Bhurji + Paratha + Milk',kcal:440,protein:24},
+    {id:'m2',time:'10:00 AM',name:'Banana + Dahi',kcal:240,protein:8},
+    {id:'m3',time:'1:00 PM',name:'Dal + Rice + Paneer + Sabzi',kcal:460,protein:28},
+    {id:'m4',time:'4:30 PM',name:'Bread + Peanut Butter + Banana',kcal:295,protein:10},
+    {id:'m5',time:'8:00 PM',name:'Chicken/Soya + Roti + Sabzi',kcal:370,protein:35},
+    {id:'m6',time:'10:00 PM',name:'Dahi + Sprouts/Chana',kcal:170,protein:14}
+  ],
+  Tue:[
+    {id:'m1',time:'7:00 AM',name:'Poha + Boiled Eggs + Milk',kcal:435,protein:26},
+    {id:'m2',time:'10:00 AM',name:'Peanut Butter Toast + Apple',kcal:310,protein:10},
+    {id:'m3',time:'1:00 PM',name:'Rajma + Rice + Salad',kcal:415,protein:24},
+    {id:'m4',time:'4:30 PM',name:'Banana + Roasted Chana/Makhana',kcal:240,protein:8},
+    {id:'m5',time:'8:00 PM',name:'Egg Curry/Paneer Bhurji + Roti',kcal:430,protein:32},
+    {id:'m6',time:'10:00 PM',name:'Dahi + Almonds/Walnuts',kcal:165,protein:10}
+  ],
+  Wed:[
+    {id:'m1',time:'7:00 AM',name:'Oats + Milk + Banana + Eggs',kcal:475,protein:28},
+    {id:'m2',time:'10:00 AM',name:'Paneer Cubes + Seasonal Fruit',kcal:215,protein:16},
+    {id:'m3',time:'1:00 PM',name:'Chole + Rice + Roti + Salad',kcal:425,protein:22},
+    {id:'m4',time:'4:30 PM',name:'Bread + Banana + Dahi',kcal:270,protein:9},
+    {id:'m5',time:'8:00 PM',name:'Dal + Chicken/Soya + Roti',kcal:405,protein:38},
+    {id:'m6',time:'10:00 PM',name:'Dahi + Moong Sprouts',kcal:155,protein:12}
+  ],
+  Thu:[
+    {id:'m1',time:'7:00 AM',name:'Besan Chilla + Dahi + Milk',kcal:395,protein:26},
+    {id:'m2',time:'10:00 AM',name:'Boiled Eggs + Banana',kcal:270,protein:14},
+    {id:'m3',time:'1:00 PM',name:'Dal Makhani + Rice + Salad',kcal:430,protein:22},
+    {id:'m4',time:'4:30 PM',name:'Murmura Chivda + Chai',kcal:195,protein:4},
+    {id:'m5',time:'8:00 PM',name:'Egg Bhurji + Paneer + Roti',kcal:510,protein:36},
+    {id:'m6',time:'10:00 PM',name:'Dahi + Almonds',kcal:155,protein:10}
+  ],
+  Fri:[
+    {id:'m1',time:'7:00 AM',name:'Moong Dal Chilla + Dahi + Milk',kcal:380,protein:28},
+    {id:'m2',time:'10:00 AM',name:'Sprouts Chaat + Nimbu',kcal:150,protein:12},
+    {id:'m3',time:'1:00 PM',name:'Chicken/Soya + Rice + Roti',kcal:460,protein:36},
+    {id:'m4',time:'4:30 PM',name:'Banana + Dahi',kcal:200,protein:6},
+    {id:'m5',time:'8:00 PM',name:'Dal + Egg/Paneer Curry + Roti',kcal:430,protein:32},
+    {id:'m6',time:'10:00 PM',name:'Dahi + Kala Chana Chaat',kcal:178,protein:14}
+  ],
+  Sat:[
+    {id:'m1',time:'7:00 AM',name:'Paratha + Egg Omelet + Dahi + Milk',kcal:520,protein:28},
+    {id:'m2',time:'10:00 AM',name:'PB + Banana Shake (milk)',kcal:390,protein:14},
+    {id:'m3',time:'1:00 PM',name:'Sabut Masoor Dal + Jeera Rice + Salad',kcal:385,protein:22},
+    {id:'m4',time:'4:30 PM',name:'Bread + Egg + Banana',kcal:255,protein:12},
+    {id:'m5',time:'8:00 PM',name:'Chicken/Soya + Dal + Roti',kcal:400,protein:36},
+    {id:'m6',time:'10:00 PM',name:'Dahi + Walnuts',kcal:155,protein:9}
+  ],
+  Sun:[
+    {id:'m1',time:'8:00 AM',name:'Egg Paratha + Dahi + Milk',kcal:470,protein:26},
+    {id:'m2',time:'11:00 AM',name:'Mixed Fruits + Nuts',kcal:220,protein:4},
+    {id:'m3',time:'1:30 PM',name:'Dal + Roti + Sabzi + Dahi',kcal:420,protein:22},
+    {id:'m4',time:'4:00 PM',name:'Chai + Boiled Eggs/Chana',kcal:185,protein:14},
+    {id:'m5',time:'7:30 PM',name:'Paneer/Egg + Dal + Roti',kcal:430,protein:32},
+    {id:'m6',time:'9:30 PM',name:'Dahi + Sprouts',kcal:155,protein:12}
+  ]
+};
+const SUPPS = [
+  {id:'s1',name:'🥛 Whey Protein',dose:'1 scoop (25g)',time:'Post-workout / 8 PM',note:'Gym ke 30 min baad'},
+  {id:'s2',name:'⚡ Creatine',dose:'3–5g powder',time:'With Whey / 7 AM rest day',note:'Paani mein mix karo'},
+  {id:'s3',name:'🐟 Omega-3',dose:'1 capsule',time:'Lunch ke saath / 1 PM',note:'Fat meal ke saath lo'}
+];
+const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+
+// ── STORAGE (safe wrappers) ───────────────────────────────────────────────────
+const Store = {
+  key(section, date) { return 'vf_' + section + '_' + date; },
+  get(k) {
+    try {
+      const v = localStorage.getItem(k);
+      if (!v) return null;
+      return JSON.parse(v);
+    } catch { return null; }
+  },
+  set(k, v) {
+    try { localStorage.setItem(k, JSON.stringify(v)); } catch {}
+  },
+  getRaw(k) { try { return localStorage.getItem(k) || ''; } catch { return ''; } },
+  setRaw(k, v) { try { localStorage.setItem(k, String(v).slice(0, 2000)); } catch {} }
+};
+
+// ── DATE HELPERS ──────────────────────────────────────────────────────────────
+function todayStr() {
+  const d = new Date();
+  return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+}
+function pad(n) { return String(n).padStart(2,'0'); }
+function getDayName(ds) {
+  const d = new Date(ds+'T12:00:00');
+  return DAYS[d.getDay()===0?6:d.getDay()-1];
+}
+function getWeekDates(offset) {
+  offset = offset||0;
+  const today = new Date();
+  const mon = new Date(today);
+  mon.setDate(today.getDate()-(today.getDay()===0?6:today.getDay()-1)+offset*7);
+  return Array.from({length:7},(_,i)=>{
+    const d = new Date(mon); d.setDate(mon.getDate()+i);
+    return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+  });
+}
+function dateDay(ds) { return new Date(ds+'T12:00:00').getDate(); }
+function monthLabel(dates) {
+  const d = new Date(dates[0]+'T12:00:00');
+  return d.toLocaleString('default',{month:'long',year:'numeric'});
+}
+function scoreColor(s) { return s>=80?'#4ade80':s>=50?'#facc15':'#f97316'; }
+
+function getDayScore(ds) {
+  const dn = getDayName(ds);
+  const exs = EXERCISES[WORKOUTS[dn].label]||[];
+  const ms = MEALS[dn]||[];
+  const ed = Store.get(Store.key('ex',ds))||{};
+  const md = Store.get(Store.key('meal',ds))||{};
+  const sd = Store.get(Store.key('supp',ds))||{};
+  const eDone = exs.filter(e=>ed[e.id]).length;
+  const mDone = ms.filter(m=>md[m.id]).length;
+  const sDone = SUPPS.filter(s=>sd[s.id]).length;
+  const total = exs.length + ms.length + SUPPS.length;
+  return total ? Math.round((eDone+mDone+sDone)/total*100) : 0;
+}
+
+// ── SVG HELPERS ───────────────────────────────────────────────────────────────
+function ringHTML(pct, size, color) {
+  const r=(size-8)/2, c=2*Math.PI*r;
+  return '<svg width="'+size+'" height="'+size+'">'
+    +'<circle cx="'+size/2+'" cy="'+size/2+'" r="'+r+'" fill="none" stroke="#1e2335" stroke-width="6"/>'
+    +'<circle cx="'+size/2+'" cy="'+size/2+'" r="'+r+'" fill="none" stroke="'+color+'" stroke-width="6"'
+    +' stroke-dasharray="'+c+'" stroke-dashoffset="'+(c*(1-pct/100))+'"'
+    +' stroke-linecap="round" transform="rotate(-90 '+size/2+' '+size/2+')"'
+    +' style="transition:stroke-dashoffset 0.5s"/>'
+    +'<text x="50%" y="50%" text-anchor="middle" dy="0.35em" fill="#e8eaf0" font-size="'+(size*0.21)+'" font-weight="700" font-family="monospace">'+pct+'%</text>'
+    +'</svg>';
+}
+function donutHTML(pct, size) {
+  const col = pct>=80?'#4ade80':pct>=50?'#facc15':pct>0?'#f97316':'#2a3050';
+  const r=(size-5)/2, c=2*Math.PI*r;
+  return '<svg width="'+size+'" height="'+size+'">'
+    +'<circle cx="'+size/2+'" cy="'+size/2+'" r="'+r+'" fill="none" stroke="#2a3050" stroke-width="4"/>'
+    +(pct>0?'<circle cx="'+size/2+'" cy="'+size/2+'" r="'+r+'" fill="none" stroke="'+col+'" stroke-width="4"'
+      +' stroke-dasharray="'+c+'" stroke-dashoffset="'+(c*(1-pct/100))+'"'
+      +' stroke-linecap="round" transform="rotate(-90 '+size/2+' '+size/2+')" />':'')
+    +'</svg>';
+}
+function checkSVG() {
+  return '<svg width="12" height="10" viewBox="0 0 12 10"><polyline points="1,5 4.5,8.5 11,1" stroke="#000" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+}
+
+// ── CHECK ITEM BUILDER ────────────────────────────────────────────────────────
+function buildCheckItem(id, label, sublabel, done, accent, onclick) {
+  const div = document.createElement('div');
+  div.className = 'check-item' + (accent?' acc-'+accent:'') + (done?' done':'');
+  div.dataset.id = id;
+  div.innerHTML =
+    '<div class="check-box">'+checkSVG()+'</div>'
+    +'<div class="flex1"><div class="ci-label"></div>'+(sublabel?'<div class="ci-sub"></div>':'')+'</div>';
+  div.querySelector('.ci-label').textContent = label;
+  if (sublabel) div.querySelector('.ci-sub').textContent = sublabel;
+  div.addEventListener('click', onclick);
+  return div;
+}
+
+// ── TAB SWITCHING ─────────────────────────────────────────────────────────────
+let currentTab = 'today';
+function switchTab(name) {
+  currentTab = name;
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>{
+    b.classList.toggle('active', ['today','calendar','exercises','diet','supplements','progress'][i]===name);
+  });
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('panel-'+name).classList.add('active');
+  renderTab(name);
+}
+
+// ── RENDER DISPATCHER ─────────────────────────────────────────────────────────
+function renderTab(name) {
+  if (name==='today') renderToday();
+  else if (name==='calendar') renderCalendar();
+  else if (name==='exercises') renderExercises();
+  else if (name==='diet') renderDiet();
+  else if (name==='supplements') renderSupplements();
+  else if (name==='progress') renderProgress();
+}
+
+// ── TODAY ─────────────────────────────────────────────────────────────────────
+function renderToday() {
+  const today = todayStr();
+  const dn = getDayName(today);
+  const wk = WORKOUTS[dn];
+  const exs = EXERCISES[wk.label]||[];
+  const ms = MEALS[dn]||[];
+  const exKey = Store.key('ex',today), mealKey = Store.key('meal',today);
+  const suppKey = Store.key('supp',today), waterKey = Store.key('water',today);
+  const exDone = Store.get(exKey)||{};
+  const mealDone = Store.get(mealKey)||{};
+  const suppDone = Store.get(suppKey)||{};
+  const water = Store.get(waterKey)||0;
+
+  const exPct = exs.length ? Math.round(exs.filter(e=>exDone[e.id]).length/exs.length*100) : 100;
+  const mealPct = ms.length ? Math.round(ms.filter(m=>mealDone[m.id]).length/ms.length*100) : 0;
+  const suppPct = Math.round(SUPPS.filter(s=>suppDone[s.id]).length/SUPPS.length*100);
+  const waterPct = Math.min(Math.round(water/8*100),100);
+
+  const p = document.getElementById('panel-today');
+  p.innerHTML = '';
+
+  // Progress rings card
+  const rc = document.createElement('div');
+  rc.className = 'card highlight';
+  rc.innerHTML = '<div class="section-label">Today\'s Progress</div>'
+    +'<div class="rings-row">'
+    +'<div class="ring-wrap">'+ringHTML(exPct,56,'#4ade80')+'<div class="ring-label">Workout</div></div>'
+    +'<div class="ring-wrap">'+ringHTML(mealPct,56,'#f97316')+'<div class="ring-label">Meals</div></div>'
+    +'<div class="ring-wrap">'+ringHTML(suppPct,56,'#c084fc')+'<div class="ring-label">Supps</div></div>'
+    +'<div class="ring-wrap">'+ringHTML(waterPct,56,'#60a5fa')+'<div class="ring-label">Water</div></div>'
+    +'</div>';
+  p.appendChild(rc);
+
+  // Water card
+  const wc = document.createElement('div');
+  wc.className = 'card';
+  const wLabel = document.createElement('div');
+  wLabel.className = 'section-label';
+  wLabel.textContent = '💧 Water — ' + water + '/8 glasses';
+  wc.appendChild(wLabel);
+  const wgrid = document.createElement('div');
+  wgrid.className = 'water-grid';
+  for (let i=0;i<8;i++) {
+    const btn = document.createElement('button');
+    btn.className = 'water-btn' + (i<water?' filled':'');
+    btn.textContent = '💧';
+    btn.addEventListener('click', ()=>{
+      const cur = Store.get(waterKey)||0;
+      Store.set(waterKey, cur===i+1?i:i+1);
+      renderToday();
+    });
+    wgrid.appendChild(btn);
+  }
+  const wh = document.createElement('div');
+  wh.className = 'water-hint';
+  wh.textContent = 'Creatine ke saath 3–4L daily zaroori hai';
+  wc.appendChild(wgrid);
+  wc.appendChild(wh);
+  p.appendChild(wc);
+
+  // Exercises card
+  if (wk.label === 'Rest') {
+    const rc2 = document.createElement('div');
+    rc2.className = 'card rest-card';
+    rc2.innerHTML = '<div class="rest-emoji">😴</div><div class="rest-title">Rest Day</div><div class="rest-sub">Muscles aaj grow kar rahe hain. Aaram karo!</div>';
+    p.appendChild(rc2);
+  } else {
+    const ec = document.createElement('div');
+    ec.className = 'card';
+    const el = document.createElement('div');
+    el.className = 'section-label';
+    el.textContent = wk.emoji+' '+wk.label+' Exercises — '+exs.filter(e=>exDone[e.id]).length+'/'+exs.length+' done';
+    ec.appendChild(el);
+    exs.forEach(ex => {
+      const item = buildCheckItem(ex.id, ex.name, ex.sets+' · '+ex.muscle, !!exDone[ex.id], 'green', ()=>{
+        const d = Store.get(exKey)||{};
+        d[ex.id] = !d[ex.id];
+        Store.set(exKey, d);
+        renderToday();
+      });
+      ec.appendChild(item);
+    });
+    p.appendChild(ec);
+  }
+
+  // Supplements card
+  const sc = document.createElement('div');
+  sc.className = 'card';
+  const sl = document.createElement('div');
+  sl.className = 'section-label';
+  sl.textContent = '💊 Supplements';
+  sc.appendChild(sl);
+  SUPPS.forEach(s => {
+    const item = buildCheckItem(s.id, s.name, s.dose+' · '+s.time, !!suppDone[s.id], 'purple', ()=>{
+      const d = Store.get(suppKey)||{};
+      d[s.id] = !d[s.id];
+      Store.set(suppKey, d);
+      renderToday();
+    });
+    sc.appendChild(item);
+  });
+  p.appendChild(sc);
+
+  // Meals card
+  const mc = document.createElement('div');
+  mc.className = 'card';
+  const ml = document.createElement('div');
+  ml.className = 'section-label';
+  ml.textContent = '🍽️ Meals — '+ms.filter(m=>mealDone[m.id]).length+'/'+ms.length+' eaten';
+  mc.appendChild(ml);
+  ms.forEach(m => {
+    const item = buildCheckItem(m.id, m.name, m.time+' · '+m.kcal+' kcal · '+m.protein+'g protein', !!mealDone[m.id], 'orange', ()=>{
+      const d = Store.get(mealKey)||{};
+      d[m.id] = !d[m.id];
+      Store.set(mealKey, d);
+      renderToday();
+    });
+    mc.appendChild(item);
+  });
+  p.appendChild(mc);
+
+  // Notes card
+  const nc = document.createElement('div');
+  nc.className = 'card';
+  const nl = document.createElement('div');
+  nl.className = 'section-label';
+  nl.textContent = '📝 Today\'s Notes';
+  const ta = document.createElement('textarea');
+  ta.className = 'notes-area';
+  ta.placeholder = 'Aaj kaisa feel hua? Koi pain? Weight badhaya? Yahan likho...';
+  ta.value = Store.getRaw(Store.key('notes',today));
+  ta.addEventListener('input', ()=>Store.setRaw(Store.key('notes',today), ta.value));
+  nc.appendChild(nl);
+  nc.appendChild(ta);
+  p.appendChild(nc);
+}
+
+// ── CALENDAR ──────────────────────────────────────────────────────────────────
+let calOffset = 0;
+function renderCalendar() {
+  const today = todayStr();
+  const dates = getWeekDates(calOffset);
+  const p = document.getElementById('panel-calendar');
+  p.innerHTML = '';
+
+  const card = document.createElement('div');
+  card.className = 'card';
+
+  const nav = document.createElement('div');
+  nav.className = 'cal-nav';
+  const prev = document.createElement('button');
+  prev.className = 'cal-nav-btn';
+  prev.textContent = '← Prev';
+  prev.addEventListener('click',()=>{calOffset--;renderCalendar();});
+  const title = document.createElement('div');
+  title.className = 'cal-nav-title';
+  title.textContent = monthLabel(dates);
+  const next = document.createElement('button');
+  next.className = 'cal-nav-btn';
+  next.textContent = 'Next →';
+  next.addEventListener('click',()=>{calOffset++;renderCalendar();});
+  nav.appendChild(prev); nav.appendChild(title); nav.appendChild(next);
+  card.appendChild(nav);
+
+  const grid = document.createElement('div');
+  grid.className = 'cal-grid';
+  DAYS.forEach(d=>{
+    const dn = document.createElement('div');
+    dn.className = 'cal-day-name';
+    dn.textContent = d;
+    grid.appendChild(dn);
+  });
+  dates.forEach((ds,i)=>{
+    const dn = getDayName(ds);
+    const score = getDayScore(ds);
+    const isFuture = ds > today;
+    const isToday = ds === today;
+    const cell = document.createElement('div');
+    cell.className = 'cal-cell' + (isToday?' today':'');
+    const dateDiv = document.createElement('div');
+    dateDiv.className = 'cal-date';
+    dateDiv.textContent = dateDay(ds);
+    const emojiDiv = document.createElement('div');
+    emojiDiv.className = 'cal-emoji';
+    emojiDiv.textContent = WORKOUTS[dn].emoji;
+    cell.appendChild(dateDiv);
+    cell.appendChild(emojiDiv);
+    if (!isFuture) {
+      const donut = document.createElement('div');
+      donut.className = 'cal-donut';
+      donut.innerHTML = donutHTML(score, 28);
+      cell.appendChild(donut);
+    } else {
+      const ph = document.createElement('div');
+      ph.style.cssText = 'width:28px;height:28px;border-radius:50%;margin:0 auto;background:#1e2335;border:1px dashed #2a3050;';
+      cell.appendChild(ph);
+    }
+    grid.appendChild(cell);
+  });
+  card.appendChild(grid);
+
+  const leg = document.createElement('div');
+  leg.className = 'cal-legend';
+  [['#4ade80','80%+ Complete'],['#facc15','50–80%'],['#f97316','<50%'],['#2a3050','Not tracked']].forEach(([c,l])=>{
+    const item = document.createElement('div');
+    item.className = 'cal-legend-item';
+    const dot = document.createElement('div');
+    dot.className = 'cal-legend-dot';
+    dot.style.background = c;
+    const lbl = document.createElement('span');
+    lbl.textContent = l;
+    item.appendChild(dot); item.appendChild(lbl);
+    leg.appendChild(item);
+  });
+  card.appendChild(leg);
+  p.appendChild(card);
+
+  const sc = document.createElement('div');
+  sc.className = 'card';
+  const sl = document.createElement('div');
+  sl.className = 'section-label';
+  sl.textContent = '📊 Week Summary';
+  sc.appendChild(sl);
+  dates.forEach((ds,i)=>{
+    if (ds > today) return;
+    const dn = getDayName(ds);
+    const wk = WORKOUTS[dn];
+    const score = getDayScore(ds);
+    const row = document.createElement('div');
+    row.className = 'week-row';
+    const icon = document.createElement('div');
+    icon.className = 'week-icon';
+    icon.style.cssText = 'background:'+wk.color+'22;border:1px solid '+wk.color+'44;';
+    icon.textContent = wk.emoji;
+    const mid = document.createElement('div');
+    mid.className = 'week-bar-wrap';
+    const lbl = document.createElement('div');
+    lbl.className = 'week-bar-label';
+    lbl.textContent = DAYS[i]+' — '+wk.label;
+    const track = document.createElement('div');
+    track.className = 'week-bar-track';
+    const fill = document.createElement('div');
+    fill.className = 'week-bar-fill';
+    fill.style.cssText = 'width:'+score+'%;background:'+scoreColor(score)+';';
+    track.appendChild(fill);
+    mid.appendChild(lbl); mid.appendChild(track);
+    const pct = document.createElement('div');
+    pct.className = 'week-pct';
+    pct.style.color = scoreColor(score);
+    pct.textContent = score+'%';
+    row.appendChild(icon); row.appendChild(mid); row.appendChild(pct);
+    sc.appendChild(row);
+  });
+  p.appendChild(sc);
+}
+
+// ── EXERCISES ─────────────────────────────────────────────────────────────────
+function renderExercises() {
+  const p = document.getElementById('panel-exercises');
+  p.innerHTML = '';
+  [['Push','🔴','#f97316'],['Pull','🔵','#60a5fa'],['Legs','🟢','#4ade80']].forEach(([type,emoji,color])=>{
+    const card = document.createElement('div');
+    card.className = 'card';
+    const h = document.createElement('div');
+    h.className = 'ex-type-header';
+    h.style.color = color;
+    h.textContent = emoji+' '+type+' Day';
+    card.appendChild(h);
+    EXERCISES[type].forEach((ex,i)=>{
+      const row = document.createElement('div');
+      row.className = 'ex-row';
+      const num = document.createElement('div');
+      num.className = 'ex-num';
+      num.textContent = i+1;
+      const info = document.createElement('div');
+      info.className = 'flex1';
+      const name = document.createElement('div');
+      name.className = 'ex-name';
+      name.textContent = ex.name;
+      const detail = document.createElement('div');
+      detail.className = 'ex-detail';
+      detail.textContent = 'Week 1–2: '+ex.sets+' · '+ex.muscle;
+      info.appendChild(name); info.appendChild(detail);
+      row.appendChild(num); row.appendChild(info);
+      card.appendChild(row);
+    });
+    p.appendChild(card);
+  });
+
+  const rc = document.createElement('div');
+  rc.className = 'card';
+  const rl = document.createElement('div');
+  rl.className = 'section-label';
+  rl.textContent = '📌 Progressive Overload Rules';
+  rc.appendChild(rl);
+  [
+    ['✅ All sets complete karein','Next session +2.5kg badhao'],
+    ['⚠️ Last set miss hua','Same weight rakho, agli baar try karo'],
+    ['❌ 2+ sets fail','Weight 10% kam karo'],
+    ['😊 Bahut easy lag raha','Mid-session weight badh sakte ho']
+  ].forEach(([cond,action])=>{
+    const row = document.createElement('div');
+    row.className = 'rule-row';
+    const c = document.createElement('div'); c.className='rule-cond'; c.textContent=cond;
+    const a = document.createElement('div'); a.className='rule-action'; a.textContent=action;
+    row.appendChild(c); row.appendChild(a);
+    rc.appendChild(row);
+  });
+  p.appendChild(rc);
+}
+
+// ── DIET ──────────────────────────────────────────────────────────────────────
+function renderDiet() {
+  const today = todayStr();
+  const todayDN = getDayName(today);
+  const p = document.getElementById('panel-diet');
+  p.innerHTML = '';
+  DAYS.forEach(dn=>{
+    const ms = MEALS[dn];
+    const totalKcal = ms.reduce((a,m)=>a+m.kcal,0);
+    const totalProt = ms.reduce((a,m)=>a+m.protein,0);
+    const isToday = dn===todayDN;
+    const wk = WORKOUTS[dn];
+    const card = document.createElement('div');
+    card.className = 'card diet-day-card';
+    if (isToday) card.style.borderColor='rgba(74,222,128,0.3)';
+
+    const hdr = document.createElement('div');
+    hdr.className = 'diet-header';
+    const dtitle = document.createElement('div');
+    dtitle.className = 'diet-day-title';
+    dtitle.textContent = wk.emoji+' '+dn+' — '+wk.label;
+    const dmacros = document.createElement('div');
+    dmacros.className = 'diet-macros';
+    const dk = document.createElement('span');
+    dk.className = 'diet-macro';
+    dk.style.color = '#c084fc';
+    dk.textContent = totalKcal+' kcal';
+    const dp = document.createElement('span');
+    dp.className = 'diet-macro';
+    dp.style.color = '#4ade80';
+    dp.textContent = totalProt+'g P';
+    dmacros.appendChild(dk); dmacros.appendChild(dp);
+    hdr.appendChild(dtitle); hdr.appendChild(dmacros);
+    card.appendChild(hdr);
+
+    ms.forEach(m=>{
+      const row = document.createElement('div');
+      row.className = 'meal-row';
+      const t = document.createElement('div'); t.className='meal-time'; t.textContent=m.time;
+      const n = document.createElement('div'); n.className='meal-name'; n.textContent=m.name;
+      const pr = document.createElement('div'); pr.className='meal-p'; pr.textContent=m.protein+'g P';
+      row.appendChild(t); row.appendChild(n); row.appendChild(pr);
+      card.appendChild(row);
+    });
+    p.appendChild(card);
+  });
+}
+
+// ── SUPPLEMENTS ───────────────────────────────────────────────────────────────
+function renderSupplements() {
+  const p = document.getElementById('panel-supplements');
+  p.innerHTML = '';
+
+  const suppData = [
+    {id:'s1',emoji:'🥛',name:'Whey Protein',brand:'MuscleBlaze Whey Active / ON Gold Standard',
+     dose:'1 scoop (25–30g) = ~22g protein',timing:'Post-workout (8 PM) · Rest day: breakfast ke saath',
+     cost:'₹1,500–2,000/kg (~33 servings)',color:'#4ade80',
+     dos:['Gym ke 30 min baad lo','200–250ml paani ya milk mein','Room temp paani use karo'],
+     donts:['Khali pet mat lo','2 scoops ek saath mat lo','Khaane ki jagah mat use karo']},
+    {id:'s2',emoji:'⚡',name:'Creatine Monohydrate',brand:'MuscleBlaze / Bigmuscles / MyProtein',
+     dose:'3–5g powder daily (1 tsp)',timing:'Post-workout · Rest day: subah khaane ke saath',
+     cost:'₹500–800/500g (3 months supply)',color:'#facc15',
+     dos:['Roz lo — consistency matters','3–4L paani zaroori hai saath mein','Loading phase zaroorat nahi'],
+     donts:['Caffeine ke saath ek time pe mat lo','10g+ ek saath mat lo','Miss mat karo — roz lo']},
+    {id:'s3',emoji:'🐟',name:'Omega-3 Fish Oil',brand:'HealthKart / MuscleBlaze / Himalaya',
+     dose:'1–2 capsules (1000mg EPA+DHA)',timing:'Lunch ke saath (1 PM) · Fat meal ke saath',
+     cost:'₹400–700/60 capsules (2 months)',color:'#60a5fa',
+     dos:['Fat wale khaane ke saath lo — better absorption','Freezer mein rakho — fishy burps nahi aayenge','Roz ek time pe lo'],
+     donts:['Khali pet mat lo — nausea hoga','Expiry check karo — rancid oil nuksan karta hai','Double dose mat lo']}
+  ];
+
+  suppData.forEach(s=>{
+    const card = document.createElement('div');
+    card.className = 'card supp-card';
+    card.style.borderLeftColor = s.color;
+
+    const hdr = document.createElement('div');
+    hdr.className = 'supp-header';
+    const ic = document.createElement('div'); ic.className='supp-icon'; ic.textContent=s.emoji;
+    const meta = document.createElement('div');
+    const sname = document.createElement('div'); sname.className='supp-name'; sname.textContent=s.name;
+    const sbrand = document.createElement('div'); sbrand.className='supp-brand'; sbrand.textContent=s.brand;
+    meta.appendChild(sname); meta.appendChild(sbrand);
+    hdr.appendChild(ic); hdr.appendChild(meta);
+    card.appendChild(hdr);
+
+    const dgrid = document.createElement('div');
+    dgrid.className = 'supp-detail-grid';
+    [['Dose',s.dose],['Timing',s.timing],['Cost',s.cost]].forEach(([l,v])=>{
+      const item = document.createElement('div');
+      item.className = 'supp-detail-item';
+      const dl = document.createElement('div'); dl.className='supp-detail-lbl'; dl.textContent=l;
+      const dv = document.createElement('div'); dv.className='supp-detail-val'; dv.textContent=v;
+      item.appendChild(dl); item.appendChild(dv);
+      dgrid.appendChild(item);
+    });
+    card.appendChild(dgrid);
+
+    const tcol = document.createElement('div');
+    tcol.className = 'supp-two-col';
+    const doCol = document.createElement('div');
+    const doTitle = document.createElement('div');
+    doTitle.className = 'supp-col-title';
+    doTitle.style.color = '#4ade80';
+    doTitle.textContent = '✅ Karo';
+    doCol.appendChild(doTitle);
+    s.dos.forEach(d=>{ const dv=document.createElement('div'); dv.className='supp-col-item'; dv.textContent=d; doCol.appendChild(dv); });
+    const dontCol = document.createElement('div');
+    const dontTitle = document.createElement('div');
+    dontTitle.className = 'supp-col-title';
+    dontTitle.style.color = '#f87171';
+    dontTitle.textContent = '❌ Mat Karo';
+    dontCol.appendChild(dontTitle);
+    s.donts.forEach(d=>{ const dv=document.createElement('div'); dv.className='supp-col-item'; dv.textContent=d; dontCol.appendChild(dv); });
+    tcol.appendChild(doCol); tcol.appendChild(dontCol);
+    card.appendChild(tcol);
+    p.appendChild(card);
+  });
+
+  const sc = document.createElement('div');
+  sc.className = 'card';
+  const sl = document.createElement('div'); sl.className='section-label'; sl.textContent='📅 Daily Supplement Schedule';
+  sc.appendChild(sl);
+  [
+    ['7:00 AM','Rest days only','⚡ Creatine 3–5g','Breakfast ke saath'],
+    ['1:00 PM','Every day','🐟 Omega-3 1 cap','Lunch ke saath'],
+    ['8:00 PM','Training days','🥛 Whey 1 scoop + ⚡ Creatine 3–5g','Post-gym 30 min']
+  ].forEach(([time,when,what,note])=>{
+    const row = document.createElement('div');
+    row.className = 'supp-schedule-row';
+    const t = document.createElement('div'); t.className='supp-time'; t.textContent=time;
+    const info = document.createElement('div');
+    const w = document.createElement('div'); w.className='supp-what'; w.textContent=what;
+    const wn = document.createElement('div'); wn.className='supp-when'; wn.textContent=when+' · '+note;
+    info.appendChild(w); info.appendChild(wn);
+    row.appendChild(t); row.appendChild(info);
+    sc.appendChild(row);
+  });
+  p.appendChild(sc);
+}
+
+// ── PROGRESS ──────────────────────────────────────────────────────────────────
+function renderProgress() {
+  const today = todayStr();
+  const dates = getWeekDates(0);
+  const p = document.getElementById('panel-progress');
+  p.innerHTML = '';
+
+  const sc = document.createElement('div');
+  sc.className = 'card';
+  sc.style.textAlign = 'center';
+  sc.style.padding = '20px';
+  const sicon = document.createElement('div'); sicon.style.fontSize='1.4rem'; sicon.style.marginBottom='6px'; sicon.textContent='📊';
+  const stitle = document.createElement('div'); stitle.className='fw700'; stitle.style.marginBottom='4px'; stitle.textContent='Weekly Stats';
+  sc.appendChild(sicon); sc.appendChild(stitle);
+
+  let total=0, tracked=0;
+  const scores = dates.map(d=>{ const s=getDayScore(d); if(d<=today){total+=s;tracked++;} return s; });
+  const avg = tracked ? Math.round(total/tracked) : 0;
+
+  const bn = document.createElement('div');
+  bn.className = 'big-number';
+  bn.textContent = avg+'%';
+  const bsub = document.createElement('div');
+  bsub.style.cssText = 'font-size:0.76rem;color:var(--muted);margin-top:4px;';
+  bsub.textContent = 'Average completion this week';
+  sc.appendChild(bn); sc.appendChild(bsub);
+
+  const bcRow = document.createElement('div');
+  bcRow.className = 'bar-chart-row';
+  dates.forEach((d,i)=>{
+    const s = scores[i];
+    const isFuture = d > today;
+    const col = document.createElement('div');
+    col.className = 'bar-col';
+    const dl = document.createElement('div'); dl.className='bar-day'; dl.textContent=DAYS[i];
+    const track = document.createElement('div'); track.className='bar-track';
+    if (!isFuture) {
+      const fill = document.createElement('div');
+      fill.className = 'bar-fill';
+      fill.style.cssText = 'height:'+s+'%;background:'+scoreColor(s)+';';
+      track.appendChild(fill);
+    }
+    const pct = document.createElement('div'); pct.className='bar-pct'; pct.textContent=isFuture?'—':s+'%';
+    col.appendChild(dl); col.appendChild(track); col.appendChild(pct);
+    bcRow.appendChild(col);
+  });
+  sc.appendChild(bcRow);
+  p.appendChild(sc);
+
+  const gc = document.createElement('div');
+  gc.className = 'card';
+  const gl = document.createElement('div'); gl.className='section-label'; gl.textContent='🎯 Month 1 Goals';
+  gc.appendChild(gl);
+  [
+    ['Learn all 18 exercise forms','Form pe focus — weight baad mein'],
+    ['Complete 24/24 sessions','6 days × 4 weeks'],
+    ['Hit 90–100g protein daily','Har meal mein protein'],
+    ['3–4L water daily','Creatine ke liye zaroori'],
+    ['Gain 0.5–1kg bodyweight','Muscle gain slow hota hai — patience rakho'],
+    ['Week 4 deload complete karo','Recovery = growth']
+  ].forEach(([goal,note])=>{
+    const row = document.createElement('div');
+    row.className = 'goal-row';
+    const ico = document.createElement('div'); ico.style.cssText='color:#4ade80;font-size:0.9rem;flex-shrink:0;'; ico.textContent='🎯';
+    const info = document.createElement('div');
+    const gt = document.createElement('div'); gt.className='goal-text'; gt.textContent=goal;
+    const gn = document.createElement('div'); gn.className='goal-note'; gn.textContent=note;
+    info.appendChild(gt); info.appendChild(gn);
+    row.appendChild(ico); row.appendChild(info);
+    gc.appendChild(row);
+  });
+  p.appendChild(gc);
+
+  const nc = document.createElement('div');
+  nc.className = 'card';
+  const nl = document.createElement('div'); nl.className='section-label'; nl.textContent='📝 Week Notes';
+  nc.appendChild(nl);
+  let hasNotes = false;
+  dates.filter(d=>d<=today).forEach(d=>{
+    const note = Store.getRaw(Store.key('notes',d));
+    if (!note) return;
+    hasNotes = true;
+    const dn = getDayName(d);
+    const entry = document.createElement('div');
+    entry.className = 'note-entry';
+    const el = document.createElement('div'); el.className='note-entry-day'; el.textContent=WORKOUTS[dn].emoji+' '+dn+' · '+d;
+    const et = document.createElement('div'); et.className='note-entry-text'; et.textContent=note;
+    entry.appendChild(el); entry.appendChild(et);
+    nc.appendChild(entry);
+  });
+  if (!hasNotes) {
+    const emp = document.createElement('div'); emp.className='empty-note';
+    emp.textContent = 'Koi notes nahi abhi tak — Today tab mein likhte jao!';
+    nc.appendChild(emp);
+  }
+  p.appendChild(nc);
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+(function init() {
+  const today = todayStr();
+  const dn = getDayName(today);
+  const wk = WORKOUTS[dn];
+  const badge = document.getElementById('dayBadge');
+  badge.textContent = wk.emoji+' '+dn+' — '+wk.label+' Day · '+new Date().toLocaleDateString('en-IN',{day:'numeric',month:'short'});
+  renderToday();
+})();
+</script>
+</body>
+</html>
